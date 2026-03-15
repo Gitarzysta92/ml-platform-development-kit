@@ -6,9 +6,9 @@ metadata:
     app.kubernetes.io/part-of: ml-platform
 data:
   APP_ENV: development
-  POSTGRES_HOST: postgres
-  POSTGRES_PORT: "5432"
-  POSTGRES_DB: ml_jobs
+  MYSQL_HOST: mysql
+  MYSQL_PORT: "3306"
+  MYSQL_DB: ml_jobs
   RABBITMQ_HOST: rabbitmq
   RABBITMQ_PORT: "5672"
   RABBITMQ_QUEUE: gpu-jobs
@@ -21,4 +21,6 @@ data:
   S3_BUCKET: ml-artifacts
   S3_FORCE_PATH_STYLE: "true"
   S3_OUTPUT_PREFIX: runpod-results
+  MLFLOW_TRACKING_URI: http://mlflow:5000
+  MLFLOW_EXPERIMENT_NAME: runpod-jobs
 

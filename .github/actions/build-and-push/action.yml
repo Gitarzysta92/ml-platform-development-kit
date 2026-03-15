@@ -1,0 +1,50 @@
+name: build-and-push
+description: Build and push a Docker image
+
+inputs:
+  context:
+    description: Docker build context directory
+    required: true
+  dockerfile:
+    description: Path to Dockerfile
+    required: true
+  tags:
+    description: Newline-separated image tags
+    required: true
+  push:
+    description: Whether to push the image
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Normalize image tags (lowercase)
+      id: normalize
+      shell: bash
+      run: |
+        normalized_tags="$(
+          printf '%s\n' "${{ inputs.tags }}" \
+            | tr '[:upper:]' '[:lower:]' \
+            | sed '/^[[:space:]]*$/d'
+        )"
+
+        {
+          echo 'tags<<__TAGS__'
+          printf '%s\n' "$normalized_tags"
+          echo '__TAGS__'
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v6
+      with:
+        context: ${{ inputs.context }}
+        file: ${{ inputs.dockerfile }}
+        push: ${{ inputs.push }}
+        tags: ${{ steps.normalize.outputs.tags }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+

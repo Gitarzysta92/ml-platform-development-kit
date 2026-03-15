@@ -1,0 +1,89 @@
+name: "ML Platform - Build and Push Images"
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "images/**"
+      - "cluster/**"
+      - ".github/**"
+  workflow_dispatch: {}
+
+jobs:
+  build_push:
+    name: Build & push (${{ matrix.image_name }})
+    runs-on: arc-runner-set-ml-platform-development-kit
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image_name: runpod-connector
+            image_path: ml-platform-development-kit/runpod-connector
+            dockerfile: images/runpod-connector/Dockerfile
+          - image_name: runpod-worker
+            image_path: ml-platform-development-kit/runpod-worker
+            dockerfile: images/runpod-worker/Dockerfile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compute image tags (Nexus)
+        id: tags
+        shell: bash
+        run: |
+          IMAGE="${{ vars.NEXUS_DOCKER_REGISTRY }}/${{ matrix.image_path }}"
+          IMAGE="$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+          echo "sha_tag=$IMAGE:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "extra_tag=$IMAGE:latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "extra_tag=$IMAGE:${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Preflight Docker registry endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          STATUS="$(curl -ksS -o /dev/null -w "%{http_code}" "https://${NEXUS_DOCKER_HOST}/v2/" || true)"
+          echo "Registry endpoint status: ${STATUS}"
+          if [ "${STATUS}" != "200" ] && [ "${STATUS}" != "401" ] && [ "${STATUS}" != "000" ]; then
+            echo "Expected 200/401/000 from https://${NEXUS_DOCKER_HOST}/v2/, got ${STATUS}"
+            exit 1
+          fi
+        env:
+          NEXUS_DOCKER_HOST: ${{ vars.NEXUS_DOCKER_HOST || vars.NEXUS_HOST }}
+
+      - name: Log in to Nexus Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.NEXUS_DOCKER_HOST || vars.NEXUS_HOST }}
+          username: ${{ secrets.NEXUS_USERNAME }}
+          password: ${{ secrets.NEXUS_PASSWORD }}
+
+      - name: Build & push image
+        uses: ./.github/actions/build-and-push
+        with:
+          context: .
+          dockerfile: ${{ matrix.dockerfile }}
+          tags: |
+            ${{ steps.tags.outputs.sha_tag }}
+            ${{ steps.tags.outputs.extra_tag }}
+          push: "true"
+
+      - name: Publish summary
+        shell: bash
+        run: |
+          {
+            echo "### ML image published"
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Image | ${{ matrix.image_name }} |"
+            echo "| SHA tag | \`${{ steps.tags.outputs.sha_tag }}\` |"
+            echo "| Extra tag | \`${{ steps.tags.outputs.extra_tag }}\` |"
+            echo "| Docker host | \`${{ vars.NEXUS_DOCKER_HOST || vars.NEXUS_HOST }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+

@@ -10,11 +10,11 @@ def _as_bool(value: str, default: bool = False) -> bool:
 class Settings:
     app_env = os.getenv("APP_ENV", "development")
 
-    postgres_host = os.getenv("POSTGRES_HOST", "localhost")
-    postgres_port = int(os.getenv("POSTGRES_PORT", "5432"))
-    postgres_db = os.getenv("POSTGRES_DB", "ml_jobs")
-    postgres_user = os.getenv("POSTGRES_USER", "ml_user")
-    postgres_password = os.getenv("POSTGRES_PASSWORD", "")
+    mysql_host = os.getenv("MYSQL_HOST", "localhost")
+    mysql_port = int(os.getenv("MYSQL_PORT", "3306"))
+    mysql_db = os.getenv("MYSQL_DB", "ml_jobs")
+    mysql_user = os.getenv("MYSQL_USER", "ml_user")
+    mysql_password = os.getenv("MYSQL_PASSWORD", "")
 
     rabbitmq_host = os.getenv("RABBITMQ_HOST", "localhost")
     rabbitmq_port = int(os.getenv("RABBITMQ_PORT", "5672"))
@@ -35,6 +35,8 @@ class Settings:
     s3_secret_access_key = os.getenv("S3_SECRET_ACCESS_KEY", "")
     s3_force_path_style = _as_bool(os.getenv("S3_FORCE_PATH_STYLE"), default=False)
     s3_output_prefix = os.getenv("S3_OUTPUT_PREFIX", "runpod-results")
+    mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "")
+    mlflow_experiment_name = os.getenv("MLFLOW_EXPERIMENT_NAME", "runpod-jobs")
 
 
 settings = Settings()

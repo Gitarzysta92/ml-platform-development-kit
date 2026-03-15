@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: ml-platform-development-kit
+  namespace: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  description: ARC runner scale set and ML kit GitOps resources
+  sourceRepos:
+    - 'https://github.com/Gitarzysta92/threesixty-platform.git'
+    - 'https://github.com/Gitarzysta92/platform-development-kit.git'
+    - 'https://github.com/Gitarzysta92/ml-platform-development-kit.git'
+    - 'ghcr.io/actions/actions-runner-controller-charts'
+    - 'oci://ghcr.io/actions/actions-runner-controller-charts'
+  destinations:
+    - namespace: 'platform'
+      server: https://kubernetes.default.svc
+    - namespace: 'ml-platform-development-kit'
+      server: https://kubernetes.default.svc
+    - namespace: 'ml-platform'
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRole
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRoleBinding
+    - group: 'apiextensions.k8s.io'
+      kind: CustomResourceDefinition
+    - group: 'argoproj.io'
+      kind: Application
+    - group: 'argoproj.io'
+      kind: AppProject
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+

@@ -1,0 +1,48 @@
+name: "ARC Runner Auth - Bootstrap (ML kit)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "development"
+        type: choice
+        options:
+          - development
+          - production
+
+jobs:
+  bootstrap:
+    name: "Create/update ARC auth secret"
+    runs-on: self-hosted
+    environment: ${{ github.event.inputs.environment || 'development' }}
+    steps:
+      - name: Ensure runner namespace exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl get ns ml-platform-development-kit >/dev/null 2>&1 || kubectl create ns ml-platform-development-kit
+
+      - name: Upsert ARC GitHub auth secret
+        shell: bash
+        env:
+          ARC_GITHUB_TOKEN: ${{ secrets.ARC_GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ARC_GITHUB_TOKEN:-}" ]; then
+            echo "::error::ARC_GITHUB_TOKEN is empty. Set it in GitHub Environment secrets."
+            exit 1
+          fi
+
+          kubectl create secret generic arc-github-auth-ml-platform-development-kit \
+            --namespace=ml-platform-development-kit \
+            --from-literal=github_token="${ARC_GITHUB_TOKEN}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Verify secret presence
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl get secret arc-github-auth-ml-platform-development-kit -n ml-platform-development-kit
+

@@ -7,9 +7,10 @@ resources:
   - namespace.yaml
   - configmap.yaml
   - secret.yaml
-  - postgres.yaml
+  - mysql.yaml
   - rabbitmq.yaml
   - minio.yaml
+  - mlflow.yaml
   - connector-deployment.yaml
   - connector-service.yaml
   - worker-deployment.yaml

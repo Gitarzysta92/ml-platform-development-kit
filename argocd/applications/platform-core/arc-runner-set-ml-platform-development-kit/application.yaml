@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: arc-runner-set-ml-platform-development-kit-config
+  namespace: platform
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    description: "ARC runner scale set config app: ml-platform-development-kit"
+    argocd.argoproj.io/sync-wave: "25"
+spec:
+  project: ml-platform-development-kit
+  source:
+    repoURL: https://github.com/Gitarzysta92/ml-platform-development-kit.git
+    targetRevision: main
+    path: environments/dev/platform/arc-runner-set-ml-platform-development-kit-kustomization
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: platform
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+

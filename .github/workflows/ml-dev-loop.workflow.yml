@@ -1,0 +1,122 @@
+name: "ML Platform - Dev Loop"
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Image to process"
+        required: true
+        type: choice
+        default: runpod-connector
+        options:
+          - runpod-connector
+          - runpod-worker
+      mode:
+        description: "Execution mode"
+        required: true
+        type: choice
+        default: connectivity
+        options:
+          - connectivity
+          - build
+          - build-and-push
+
+jobs:
+  dev_loop:
+    name: Dev loop (${{ inputs.image }} / ${{ inputs.mode }})
+    runs-on: arc-runner-set-ml-platform-development-kit
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve image configuration
+        id: cfg
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "${{ inputs.image }}" in
+            runpod-connector)
+              echo "image_path=ml-platform-development-kit/runpod-connector" >> "$GITHUB_OUTPUT"
+              echo "dockerfile=images/runpod-connector/Dockerfile" >> "$GITHUB_OUTPUT"
+              ;;
+            runpod-worker)
+              echo "image_path=ml-platform-development-kit/runpod-worker" >> "$GITHUB_OUTPUT"
+              echo "dockerfile=images/runpod-worker/Dockerfile" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unsupported image: ${{ inputs.image }}"
+              exit 1
+              ;;
+          esac
+
+      - name: Preflight Docker registry endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          STATUS="$(curl -ksS -o /dev/null -w "%{http_code}" "https://${NEXUS_DOCKER_HOST}/v2/" || true)"
+          echo "Registry endpoint status: ${STATUS}"
+          if [ "${STATUS}" != "200" ] && [ "${STATUS}" != "401" ] && [ "${STATUS}" != "000" ]; then
+            echo "Expected 200/401/000 from https://${NEXUS_DOCKER_HOST}/v2/, got ${STATUS}"
+            exit 1
+          fi
+        env:
+          NEXUS_DOCKER_HOST: ${{ vars.NEXUS_DOCKER_HOST || vars.NEXUS_HOST }}
+
+      - name: Log in to Nexus Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.NEXUS_DOCKER_HOST || vars.NEXUS_HOST }}
+          username: ${{ secrets.NEXUS_USERNAME }}
+          password: ${{ secrets.NEXUS_PASSWORD }}
+
+      - name: Compute tags
+        if: ${{ inputs.mode != 'connectivity' }}
+        id: tags
+        shell: bash
+        run: |
+          IMAGE="${{ vars.NEXUS_DOCKER_REGISTRY }}/${{ steps.cfg.outputs.image_path }}"
+          IMAGE="$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')"
+          if [ "${{ inputs.mode }}" = "build-and-push" ]; then
+            echo "tag=$IMAGE:devloop-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=$IMAGE:dryrun-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build image (no push)
+        if: ${{ inputs.mode == 'build' }}
+        uses: ./.github/actions/build-and-push
+        with:
+          context: .
+          dockerfile: ${{ steps.cfg.outputs.dockerfile }}
+          tags: ${{ steps.tags.outputs.tag }}
+          push: "false"
+
+      - name: Build and push image
+        if: ${{ inputs.mode == 'build-and-push' }}
+        uses: ./.github/actions/build-and-push
+        with:
+          context: .
+          dockerfile: ${{ steps.cfg.outputs.dockerfile }}
+          tags: ${{ steps.tags.outputs.tag }}
+          push: "true"
+
+      - name: Publish summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### ML dev loop result"
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Image | ${{ inputs.image }} |"
+            echo "| Mode | ${{ inputs.mode }} |"
+            echo "| Docker host | \`${{ vars.NEXUS_DOCKER_HOST || vars.NEXUS_HOST }}\` |"
+            echo "| Docker registry | \`${{ vars.NEXUS_DOCKER_REGISTRY }}\` |"
+            if [ -n "${{ steps.tags.outputs.tag }}" ]; then
+              echo "| Tag | \`${{ steps.tags.outputs.tag }}\` |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+

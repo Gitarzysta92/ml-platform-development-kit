@@ -1,8 +1,9 @@
 fastapi
 uvicorn[standard]
 sqlalchemy
-psycopg2-binary
+pymysql
 pika
 requests
 boto3
+mlflow
 

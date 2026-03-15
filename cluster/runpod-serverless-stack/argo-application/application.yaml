@@ -1,0 +1,101 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ml-platform-stack
+  namespace: platform
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    description: "ML platform stack (Runpod connector, worker, queue, tracking)"
+    argocd.argoproj.io/sync-wave: "25"
+spec:
+  project: threesixty-platform
+  source:
+    repoURL: https://github.com/Gitarzysta92/ml-platform-development-kit.git
+    targetRevision: main
+    path: cluster/runpod-serverless-stack
+    kustomize:
+      patches:
+        - target:
+            kind: StatefulSet
+            name: mysql
+          patch: |-
+            apiVersion: apps/v1
+            kind: StatefulSet
+            metadata:
+              name: mysql
+            $patch: delete
+        - target:
+            kind: Service
+            name: mysql
+          patch: |-
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: mysql
+            $patch: delete
+        - target:
+            kind: StatefulSet
+            name: rabbitmq
+          patch: |-
+            apiVersion: apps/v1
+            kind: StatefulSet
+            metadata:
+              name: rabbitmq
+            $patch: delete
+        - target:
+            kind: Service
+            name: rabbitmq
+          patch: |-
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: rabbitmq
+            $patch: delete
+        - target:
+            kind: StatefulSet
+            name: minio
+          patch: |-
+            apiVersion: apps/v1
+            kind: StatefulSet
+            metadata:
+              name: minio
+            $patch: delete
+        - target:
+            kind: Service
+            name: minio
+          patch: |-
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: minio
+            $patch: delete
+        - target:
+            kind: ConfigMap
+            name: runpod-stack-config
+          patch: |-
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: runpod-stack-config
+            data:
+              MYSQL_HOST: mysql.platform.svc.cluster.local
+              RABBITMQ_HOST: rabbitmq.platform.svc.cluster.local
+              S3_ENDPOINT_URL: http://minio.platform.svc.cluster.local:9000
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ml-platform
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+

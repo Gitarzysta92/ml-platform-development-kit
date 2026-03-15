@@ -6,8 +6,8 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from .config import settings
 
 DATABASE_URL = (
-    f"postgresql+psycopg2://{settings.postgres_user}:{settings.postgres_password}"
-    f"@{settings.postgres_host}:{settings.postgres_port}/{settings.postgres_db}"
+    f"mysql+pymysql://{settings.mysql_user}:{settings.mysql_password}"
+    f"@{settings.mysql_host}:{settings.mysql_port}/{settings.mysql_db}?charset=utf8mb4"
 )
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
