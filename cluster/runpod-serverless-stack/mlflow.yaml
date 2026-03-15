@@ -31,10 +31,30 @@ spec:
       labels:
         app: mlflow
     spec:
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      initContainers:
+        - name: init-mlflow-permissions
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - mkdir -p /mlflow/db /mlflow/artifacts && chown -R 1000:1000 /mlflow
+          volumeMounts:
+            - name: db
+              mountPath: /mlflow/db
+            - name: artifacts
+              mountPath: /mlflow/artifacts
       containers:
         - name: mlflow
           image: ghcr.io/mlflow/mlflow:v2.20.0
           imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
           args:
             - mlflow
             - server
