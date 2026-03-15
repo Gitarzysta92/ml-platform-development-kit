@@ -186,24 +186,34 @@ Workflows intentionally mirror `solution-development-kit` conventions:
 
 If your `threesixty-platform` environment uses different runner labels or registry hostnames, override these values in workflow files or via repository variables.
 
-### ARC runner GitOps bootstrap (SDK-style)
+### ARC runner GitOps bootstrap (integration claim model)
 
-This repository includes the same ARC bootstrap model used in `solution-development-kit`:
+This repository exposes a single integration-claim entrypoint for the host platform:
 
+- Bootstrap kustomization (contains governance + apps):
+  - `argocd/bootstrap/kustomization.yaml`
 - AppProject:
   - `argocd/bootstrap/projects/ml-platform-development-kit-project/ml-platform-development-kit-project.yaml`
-- ARC runner config Application:
+- ARC runner config `Application`:
   - `argocd/applications/platform-core/arc-runner-set-ml-platform-development-kit/application.yaml`
-- Environment kustomization for runner scale set:
-  - `environments/dev/platform/arc-runner-set-ml-platform-development-kit-kustomization/kustomization.yaml`
-- ARC auth secret bootstrap workflow:
-  - `.github/workflows/arc-runner-auth-bootstrap.workflow.yml`
 
-Expected bootstrap order:
+Onboarding flow:
 
-1. Apply AppProject from `argocd/bootstrap/projects/...`.
-2. Run ARC auth bootstrap workflow to create `arc-github-auth-ml-platform-development-kit` secret.
-3. Apply ARC runner config Application from `argocd/applications/platform-core/...`.
+1. Ensure this repository is connected in Argo CD (`repoURL` access).
+2. In `threesixty-platform`, generate and apply integration claim `Application` YAML:
+
+```bash
+./scripts/generate-platform-integration-claim.sh https://github.com/Gitarzysta92/ml-platform-development-kit.git main | kubectl apply -f -
+```
+
+This creates `ml-platform-development-kit-platform-integration-claim`, which reconciles `argocd/bootstrap` from this repository and creates:
+
+- `AppProject/ml-platform-development-kit`
+- `Application/arc-runner-set-ml-platform-development-kit-config`
+
+Then:
+
+3. Run ARC auth bootstrap workflow to create `arc-github-auth-ml-platform-development-kit` secret.
 4. Run image workflows (`ml-images` / `ml-dev-loop`) on `arc-runner-set-ml-platform-development-kit`.
 
 ## Quick start (local cluster / dev)
