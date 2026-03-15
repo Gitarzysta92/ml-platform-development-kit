@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: runpod-worker
+  labels:
+    app: runpod-worker
+    app.kubernetes.io/name: runpod-worker
+    app.kubernetes.io/part-of: ml-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: runpod-worker
+  template:
+    metadata:
+      labels:
+        app: runpod-worker
+    spec:
+      containers:
+        - name: runpod-worker
+          image: ghcr.io/gitarzysta92/runpod-worker:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: runpod-stack-config
+            - secretRef:
+                name: runpod-stack-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+

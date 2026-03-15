@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: runpod-stack-config
+  labels:
+    app.kubernetes.io/part-of: ml-platform
+data:
+  APP_ENV: development
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: ml_jobs
+  RABBITMQ_HOST: rabbitmq
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_QUEUE: gpu-jobs
+  RUNPOD_API_BASE_URL: https://api.runpod.ai/v2
+  RUNPOD_ENDPOINT_ID: replace-with-runpod-endpoint-id
+  RUNPOD_STATUS_POLL_INTERVAL_SECONDS: "3"
+  RUNPOD_STATUS_TIMEOUT_SECONDS: "900"
+  S3_ENDPOINT_URL: http://minio:9000
+  S3_REGION: us-east-1
+  S3_BUCKET: ml-artifacts
+  S3_FORCE_PATH_STYLE: "true"
+  S3_OUTPUT_PREFIX: runpod-results
+

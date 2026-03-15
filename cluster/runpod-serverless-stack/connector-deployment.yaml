@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: runpod-connector
+  labels:
+    app: runpod-connector
+    app.kubernetes.io/name: runpod-connector
+    app.kubernetes.io/part-of: ml-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: runpod-connector
+  template:
+    metadata:
+      labels:
+        app: runpod-connector
+    spec:
+      containers:
+        - name: runpod-connector
+          image: ghcr.io/gitarzysta92/runpod-connector:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: runpod-stack-config
+            - secretRef:
+                name: runpod-stack-secrets
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
