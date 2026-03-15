@@ -46,21 +46,32 @@ spec:
             - sqlite:////mlflow/db/mlflow.db
             - --default-artifact-root
             - /mlflow/artifacts
+            - --gunicorn-opts
+            - --workers=1 --timeout=120
           ports:
             - name: http
               containerPort: 5000
+          startupProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 24
           readinessProbe:
-            httpGet:
-              path: /health
+            tcpSocket:
               port: http
-            initialDelaySeconds: 10
+            initialDelaySeconds: 5
             periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
           livenessProbe:
-            httpGet:
-              path: /health
+            tcpSocket:
               port: http
-            initialDelaySeconds: 20
+            initialDelaySeconds: 30
             periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 6
           resources:
             requests:
               cpu: 100m
