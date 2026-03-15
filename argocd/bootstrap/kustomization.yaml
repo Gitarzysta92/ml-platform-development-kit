@@ -9,3 +9,4 @@ resources:
 
   # Root Applications for this repository.
   - ../applications/platform-core/arc-runner-set-ml-platform-development-kit
+  - ../applications/platform-core/ml-platform-stack
